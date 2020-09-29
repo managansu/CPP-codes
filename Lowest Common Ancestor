@@ -1,87 +1,108 @@
 #include<bits/stdc++.h>
-#pragma GCC target ("avx2")
-#pragma GCC optimization ("O3")
-#pragma GCC optimization ("unroll-loops")
-#define pb push_back
-#define F first
-#define S second
-#define ll long long
-#define endl "\n"
-#define vi vector<int>
-#define vl vector<ll>
-#define all(v) v.begin(),v.end()
-#define mst(a,b) memset(a,b,sizeof(a));
-#define pii pair<ll,ll>
+#define int long long
 using namespace std;
-const int mod=998244353;
-const int N=1e5+5,lg=20;
-vi v[N];
-int depth[N],n,parent[N][lg];
-void dfs(int s, int p){
-    if(s!=0)depth[s]=depth[p]+1;
-    parent[s][0]=p;
-    for(int i=0;i<v[s].size();i++){
-        if(v[s][i]==p) continue;
-        dfs(v[s][i],s);
+int n, m;
+vector<int> a, seg, lazy;
+
+void build(int ind, int low, int high){
+    if(low == high){
+        seg[ind] = a[low];
+        return;
     }
+    int mid = (low + high) / 2;
+    build(2 * ind + 1, low, mid);
+    build(2 * ind + 2, mid + 1, high);
+    seg[ind] = min(seg[2 * ind + 1], seg[2 * ind + 2]);
 }
-int lca(int u, int v){
-    if(depth[u]<depth[v]) {int t=u;u=v;v=t;}
-    int d=depth[u]-depth[v];
-    for(int i=19;i>=0;i--){
-        if(d>=(1<<i)){
-            d=d-(1<<i);
-            u=parent[u][i];
+
+void update(int ind, int low, int high, int l, int r, int val){
+    if(lazy[ind] != 0){
+        seg[ind] += lazy[ind];
+        if(low != high){
+            lazy[2 * ind + 1] += lazy[ind];
+            lazy[2 * ind + 2] += lazy[ind];
+        }
+        lazy[ind] = 0;
+    }
+    if(r < low || l > high || low > high) return;
+    if(low >= l && high <= r){
+        seg[ind] += val;
+        if(low != high){
+            lazy[2 * ind + 1] += val;
+            lazy[2 * ind + 2] += val;
+        }
+        return;
+    }
+    int mid = (low + high) >> 1;
+    update(2 * ind + 1, low, mid, l, r, val);
+    update(2 * ind + 2, mid + 1, high, l, r, val);
+    seg[ind] = min(seg[2 * ind + 1], seg[2 * ind + 2]);
+}
+
+int query(int ind, int low, int high, int l, int r){
+    if(lazy[ind] != 0){
+        seg[ind] += lazy[ind];
+        if(low != high){
+            lazy[2 * ind + 1] += lazy[ind];
+            lazy[2 * ind + 2] += lazy[ind];
+        }
+        lazy[ind] = 0;
+    }
+    if(r < low || l > high || low > high) return INT_MAX;
+    if(low >= l && high <= r){
+        return seg[ind];
+    }
+    int mid = (low + high) >> 1;
+    return min(query(2 * ind + 1, low, mid, l, r), query(2 * ind + 2, mid + 1, high, l, r));
+}
+
+void test_cases(){
+    cin >> n;
+    a.resize(n);
+    for(int i = 0; i < n; i++){
+        cin >> a[i];
+    }
+    seg.assign(5 * n + 5, 0);
+    lazy.assign(5 * n + 5, 0);
+    build(0, 0, n - 1);
+    cin >> m;
+    m++;
+    while(m--){
+        string line;
+        getline(cin, line);
+        istringstream iss(line);
+        vector<int> b;
+        int tmp;
+        while (iss >> tmp) {
+            b.push_back(tmp);
+            iss.ignore(1, ',');
+        }
+        if((int)b.size() == 2){
+            if(b[0] <= b[1]){
+                cout << query(0, 0, n - 1, b[0], b[1]) << "\n";
+            }
+            else{
+                cout << min(query(0, 0, n - 1, b[0], n - 1), query(0, 0, n - 1, 0, b[1])) << "\n";
+            }
+        }
+        else if((int)b.size() == 3){
+            if(b[0] <= b[1]){
+                update(0, 0, n - 1, b[0], b[1], b[2]);
+            }
+            else{
+                update(0, 0, n - 1, b[0], n, b[2]);
+                update(0, 0, n - 1, 0, b[1], b[2]);
+            }
         }
     }
-    if(u==v) return u;
-    for(int i=19;i>=0;i--){
-        if(depth[u]>=(1<<i)){
-            int w=parent[u][i];
-            int x=parent[v][i];
-            if(w==x) continue;
-            u=w;
-            v=x;
-        }
-    }
-    return parent[u][0];
 }
-void solve(){
-    mst(parent,-1);
-    cin>>n;
-    for(int i=1;i<=n-1;i++){
-        int j;
-        cin>>j;
-        v[j].pb(i);
-        v[i].pb(j);
+
+int32_t main(){
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    int tt = 1;
+    while(tt--){
+        test_cases();
     }
-    depth[0]=0;
-    dfs(0,-1);
-    for(int i=0;i<n;i++){
-        for(int j=1;j<20;j++){
-            if(parent[i][j-1]==-1) break;
-            parent[i][j]=parent[parent[i][j-1]][j-1];
-        }
-    }
-    int m,j,k;
-    cin>>m;
-    for(int i=0;i<m;i++){
-        cin>>j;
-        if(m==1){cout<<j<<endl;return;}
-        if(i==0) {k=j;continue;}
-        k=lca(k,j);
-    }
-    cout<<k<<endl;
-}
-int main(){
-    ios_base::sync_with_stdio(0);
-    cin.tie(0);cout.tie(0);
-    //freopen("input.txt", "r", stdin);
-    //freopen("output.txt", "w", stdout);
-    int t,p;
-    //cin>>t;
-    t=1;
-    for(p=0;p<t;p++){
-        solve();
-    }
+    return 0;
 }
